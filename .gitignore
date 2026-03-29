@@ -44,6 +44,9 @@
 bin/
 obj/
 
+# Built premake5 binary (bootstrapped from lib/OPTKIT/lib/premake5)
+lib/OPTKIT/lib/premake5/bin/
+
 # Premake generated project files
 *.make
 Makefile
