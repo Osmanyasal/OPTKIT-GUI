@@ -32,9 +32,17 @@ else
 fi
 
 # ────────────────────────────────────────────────
-# 3. Run premake5 with the requested action
+# 3. Building OPTKIT
 # ────────────────────────────────────────────────
+echo ">>> Building OPTKIT..."
+cd "$SCRIPT_DIR/lib/OPTKIT"
+premake5 gmake
+make -j$(nproc) config=release optkit_dynamic
 
+
+# ────────────────────────────────────────────────
+# 4. Run premake5 with the requested action
+# ────────────────────────────────────────────────
 ACTION="${1:-gmake2}"
 echo ">>> Running premake5 $ACTION ..."
 cd "$SCRIPT_DIR"

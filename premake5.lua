@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global, lowercase-global
 
 workspace "OPTKIT-GUI"
-    configurations { "Debug", "Release" }
+    configurations { "rebug", "release" }
     architecture "x86_64"
     startproject "OPTKIT-GUI"
 
@@ -81,70 +81,13 @@ project "OPTKIT-GUI"
             "lib/glfw/src/x11_window.c",
             "lib/glfw/src/xkb_unicode.c",
             "lib/glfw/src/posix_module.c",
+            "lib/glfw/src/posix_poll.c",
             "lib/glfw/src/posix_time.c",
             "lib/glfw/src/posix_thread.c",
             "lib/glfw/src/glx_context.c",
             "lib/glfw/src/egl_context.c",
             "lib/glfw/src/osmesa_context.c",
             "lib/glfw/src/linux_joystick.c",
-        }
-
-    filter "system:windows"
-        defines { "_GLFW_WIN32" }
-        links { "opengl32", "gdi32", "user32", "shell32", "kernel32" }
-
-        files {
-            "lib/glfw/src/glfw_config.h",
-            "lib/glfw/src/context.c",
-            "lib/glfw/src/init.c",
-            "lib/glfw/src/input.c",
-            "lib/glfw/src/monitor.c",
-            "lib/glfw/src/vulkan.c",
-            "lib/glfw/src/window.c",
-            "lib/glfw/src/platform.c",
-            "lib/glfw/src/null_init.c",
-            "lib/glfw/src/null_joystick.c",
-            "lib/glfw/src/null_monitor.c",
-            "lib/glfw/src/null_window.c",
-            "lib/glfw/src/win32_init.c",
-            "lib/glfw/src/win32_joystick.c",
-            "lib/glfw/src/win32_module.c",
-            "lib/glfw/src/win32_monitor.c",
-            "lib/glfw/src/win32_time.c",
-            "lib/glfw/src/win32_thread.c",
-            "lib/glfw/src/win32_window.c",
-            "lib/glfw/src/wgl_context.c",
-            "lib/glfw/src/egl_context.c",
-            "lib/glfw/src/osmesa_context.c",
-        }
-
-    filter "system:macosx"
-        defines { "_GLFW_COCOA" }
-        links { "Cocoa.framework", "IOKit.framework", "CoreFoundation.framework", "OpenGL.framework" }
-
-        files {
-            "lib/glfw/src/glfw_config.h",
-            "lib/glfw/src/context.c",
-            "lib/glfw/src/init.c",
-            "lib/glfw/src/input.c",
-            "lib/glfw/src/monitor.c",
-            "lib/glfw/src/vulkan.c",
-            "lib/glfw/src/window.c",
-            "lib/glfw/src/platform.c",
-            "lib/glfw/src/null_init.c",
-            "lib/glfw/src/null_joystick.c",
-            "lib/glfw/src/null_monitor.c",
-            "lib/glfw/src/null_window.c",
-            "lib/glfw/src/cocoa_init.m",
-            "lib/glfw/src/cocoa_joystick.m",
-            "lib/glfw/src/cocoa_monitor.m",
-            "lib/glfw/src/cocoa_window.m",
-            "lib/glfw/src/cocoa_time.c",
-            "lib/glfw/src/posix_module.c",
-            "lib/glfw/src/posix_thread.c",
-            "lib/glfw/src/nsgl_context.m",
-            "lib/glfw/src/egl_context.c",
-            "lib/glfw/src/osmesa_context.c",
         }
 
     -- Configuration-specific settings
@@ -158,4 +101,18 @@ project "OPTKIT-GUI"
         optimize "On"
         runtime "Release"
 
-    filter {}
+    -- Custom clean action to remove bin directory
+    newaction {
+        trigger     = "clean",
+        description = "Remove all generated files and bin directory",
+        execute     = function ()
+            print("Removing bin directory...")
+            os.rmdir("bin")
+            print("Removing Makefile and *.make files...")
+            os.remove("Makefile")
+            local files = os.matchfiles("*.make")
+            for _, f in ipairs(files) do
+                os.remove(f)
+            end
+        end
+    }
