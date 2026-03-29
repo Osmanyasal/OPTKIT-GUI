@@ -39,3 +39,22 @@
 
 # debug information files
 *.dwo
+
+# Build output directories
+bin/
+obj/
+
+# Premake generated project files
+*.make
+Makefile
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# IDE files
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
