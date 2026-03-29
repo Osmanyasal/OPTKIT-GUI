@@ -11,11 +11,10 @@ PREMAKE5_BIN="$SCRIPT_DIR/lib/OPTKIT/lib/premake5/bin/release/premake5"
 # 1. Initialize required submodules
 # ────────────────────────────────────────────────
 echo ">>> Initializing submodules..."
-git -C "$SCRIPT_DIR" submodule update --init lib/OPTKIT
-git -C "$SCRIPT_DIR/lib/OPTKIT" submodule update --init lib/premake5
-git -C "$SCRIPT_DIR" submodule update --init lib/imgui
-git -C "$SCRIPT_DIR" submodule update --init lib/implot
-git -C "$SCRIPT_DIR" submodule update --init lib/glfw
+git -C "$SCRIPT_DIR" submodule update --init --recursive --force --remote lib/OPTKIT
+git -C "$SCRIPT_DIR" submodule update --init --recursive --force --remote lib/imgui
+git -C "$SCRIPT_DIR" submodule update --init --recursive --force --remote lib/implot
+git -C "$SCRIPT_DIR" submodule update --init --recursive --force --remote lib/glfw
 
 # ────────────────────────────────────────────────
 # 2. Build premake5 from source (if not already built)
@@ -35,6 +34,7 @@ fi
 # ────────────────────────────────────────────────
 # 3. Run premake5 with the requested action
 # ────────────────────────────────────────────────
+
 ACTION="${1:-gmake2}"
 echo ">>> Running premake5 $ACTION ..."
 cd "$SCRIPT_DIR"
