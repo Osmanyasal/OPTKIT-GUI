@@ -23,11 +23,11 @@ git -C "$SCRIPT_DIR" submodule update --init lib/glfw
 if [ ! -f "$PREMAKE5_BIN" ]; then
     echo ">>> Building premake5 from source..."
     SYSTEM=$(uname -s)
-    case "$SYSTEM" in
-        Linux)  make -C "$PREMAKE5_SRC" -f Bootstrap.mak linux ;;
-        Darwin) make -C "$PREMAKE5_SRC" -f Bootstrap.mak osx ;;
-        *)      echo "Unsupported platform: $SYSTEM"; exit 1 ;;
-    esac
+    if [ "$SYSTEM" = "Linux" ]; then
+        make -C "$PREMAKE5_SRC" -f Bootstrap.mak linux
+    else
+        echo "Unsupported platform: $SYSTEM (only Linux is supported)"; exit 1
+    fi
 else
     echo ">>> premake5 binary already exists, skipping build."
 fi
