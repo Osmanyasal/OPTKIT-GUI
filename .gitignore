@@ -39,3 +39,25 @@
 
 # debug information files
 *.dwo
+
+# Build output directories
+bin/
+obj/
+
+# Built premake5 binary (bootstrapped from lib/OPTKIT/lib/premake5)
+lib/OPTKIT/lib/premake5/bin/
+
+# Premake generated project files
+*.make
+Makefile
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# IDE files
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
