@@ -53,6 +53,7 @@ project "OPTKIT-GUI"
         links {
             "GL",
             "dl",
+            "png16",
             "pthread",
             "X11",
             "Xrandr",
