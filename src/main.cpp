@@ -144,7 +144,7 @@ int main(int, char **)
         ImGui::SetNextWindowSize(viewport->WorkSize);
 
         ImGuiWindowFlags main_window_flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
-                             ImGuiWindowFlags_NoMove |
+                             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar |
                              ImGuiWindowFlags_NoResize;
 
         ImGui::Begin("OPTKIT-GUI", nullptr, main_window_flags);
