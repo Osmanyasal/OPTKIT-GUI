@@ -21,7 +21,8 @@ struct SessionDraft
     bool collect_memory = true;
     bool collect_gpu = false;
     char session_name[128] = "New Profiling Session";
-    char target_binary[256] = "./bin/my_workload";
+    char target_binary[1024] = "./bin/my_workload";
+    char target_arguments[512] = "";
 };
 
 struct AppState
@@ -29,5 +30,7 @@ struct AppState
     AppTheme current_theme = AppTheme_Dark;
     AppPage current_page = AppPage_Welcome;
     bool show_settings_popup = false;
+    bool open_target_binary_picker = false;
+    char target_binary_picker_directory[1024] = ".";
     SessionDraft session_draft;
 };

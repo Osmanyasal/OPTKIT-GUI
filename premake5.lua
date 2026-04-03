@@ -1,5 +1,34 @@
 ---@diagnostic disable: undefined-global, lowercase-global
 
+local function trim(value)
+    return (value:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function get_command_output(command)
+    local ok, output = pcall(os.outputof, command)
+    if not ok or not output then
+        return ""
+    end
+
+    return trim(output)
+end
+
+local function get_optkit_version()
+    local revision = get_command_output('git -C "lib/OPTKIT" rev-parse --short=12 HEAD 2>/dev/null')
+    if revision == "" then
+        return "unknown"
+    end
+
+    local dirty = get_command_output('git -C "lib/OPTKIT" status --short 2>/dev/null')
+    if dirty ~= "" then
+        return revision .. "-dirty"
+    end
+
+    return revision
+end
+
+local optkit_version = get_optkit_version()
+
 workspace "OPTKIT-GUI"
     configurations { "rebug", "release" }
     architecture "x86_64"
@@ -14,6 +43,9 @@ project "OPTKIT-GUI"
     cppdialect "C++17"
     targetdir ("bin/%{outputdir}")
     objdir ("bin/obj/%{outputdir}")
+    defines {
+        'OPTKIT_GUI_OPTKIT_VERSION="' .. optkit_version .. '"',
+    }
 
     -- Source files
     files {
@@ -50,7 +82,11 @@ project "OPTKIT-GUI"
     -- GLFW build from source
     filter "system:linux"
         defines { "_GLFW_X11" }
+        libdirs {
+            "lib/OPTKIT/bin/Release",
+        }
         links {
+            "optkit_dynamic",
             "GL",
             "dl",
             "png16",
@@ -61,6 +97,9 @@ project "OPTKIT-GUI"
             "Xxf86vm",
             "Xcursor",
             "Xinerama",
+        }
+        linkoptions {
+            "-Wl,-rpath,lib/OPTKIT/bin/Release",
         }
 
         -- Compile GLFW sources directly
@@ -89,6 +128,7 @@ project "OPTKIT-GUI"
             "lib/glfw/src/egl_context.c",
             "lib/glfw/src/osmesa_context.c",
             "lib/glfw/src/linux_joystick.c",
+            "lib/OPTKIT/src/optkit.hh"
         }
 
     -- Configuration-specific settings
