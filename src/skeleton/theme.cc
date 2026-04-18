@@ -1,4 +1,4 @@
-#include "skeleton/theme.h"
+#include "skeleton/theme.hh"
 
 static void configure_base_theme()
 {

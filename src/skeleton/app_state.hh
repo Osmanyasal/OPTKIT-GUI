@@ -1,5 +1,9 @@
 #pragma once
 
+#include "adapter/adapter.hh"
+
+#include <string>
+
 enum AppTheme
 {
     AppTheme_Dark,
@@ -20,9 +24,10 @@ struct SessionDraft
     bool collect_cpu = true;
     bool collect_memory = true;
     bool collect_gpu = false;
-    char session_name[128] = "New Profiling Session";
-    char target_binary[1024] = "./bin/my_workload";
-    char target_arguments[512] = "";
+    std::string session_name = "New Profiling Session";
+    std::string target_binary = "./bin/my_workload";
+    std::string target_arguments;
+    bool post_mortem = true;
 };
 
 struct AppState
@@ -33,4 +38,5 @@ struct AppState
     bool open_target_binary_picker = false;
     char target_binary_picker_directory[1024] = ".";
     SessionDraft session_draft;
+    OptkitAdapter optkit;
 };

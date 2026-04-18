@@ -1,4 +1,4 @@
-#include "skeleton/about.h"
+#include "skeleton/about.hh"
 #include "imgui.h"
 #include "utils/environment_config.hh"
 #include <string>

@@ -2,8 +2,8 @@
 
 #include "imgui.h"
 
-#include "skeleton/app_state.h"
-#include "skeleton/texture.h"
+#include "skeleton/app_state.hh"
+#include "skeleton/texture.hh"
 
 void render_settings_button_and_popup(AppState &state,
                                       const TextureHandle &dark_theme_gear_icon,

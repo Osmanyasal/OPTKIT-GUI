@@ -29,6 +29,86 @@ end
 
 local optkit_version = get_optkit_version()
 
+local function dynamic_lib_exists(libname)
+    local pipe = io.popen("ldconfig -p 2>/dev/null | grep lib" .. libname .. ".so")
+    if pipe then
+        local result = pipe:read("*a")
+        pipe:close()
+        if result and result ~= "" then
+            return true
+        end
+    end
+
+    local search_paths = {
+        "/opt/rocm/lib",
+        "/usr/local/cuda/lib64",
+        "/usr/lib/x86_64-linux-gnu",
+    }
+
+    local ld_library_path = os.getenv("LD_LIBRARY_PATH")
+    if ld_library_path then
+        for path in string.gmatch(ld_library_path, "[^:]+") do
+            table.insert(search_paths, path)
+        end
+    end
+
+    for _, path in ipairs(search_paths) do
+        local lib_patterns = {
+            path .. "/lib" .. libname .. ".so",
+            path .. "/lib" .. libname .. ".so.*",
+        }
+
+        for _, pattern in ipairs(lib_patterns) do
+            local check_pipe = io.popen("ls " .. pattern .. " 2>/dev/null")
+            if check_pipe then
+                local check_result = check_pipe:read("*a")
+                check_pipe:close()
+                if check_result and check_result ~= "" then
+                    return true
+                end
+            end
+        end
+    end
+
+    return false
+end
+
+local function first_existing_dir(candidates)
+    for _, candidate in ipairs(candidates) do
+        if os.isdir(candidate) then
+            return candidate
+        end
+    end
+
+    return nil
+end
+
+local function get_nvml_include()
+    return first_existing_dir({
+        "/usr/local/cuda/include",
+        "/usr/local/cuda/targets/x86_64-linux/include",
+        "/usr/local/cuda-12.9/include",
+    })
+end
+
+local function get_cupti_include()
+    return get_nvml_include()
+end
+
+local function get_rocm_include()
+    return first_existing_dir({
+        "/opt/rocm/include",
+    })
+end
+
+local function get_cuda_libdir()
+    return first_existing_dir({
+        "/usr/local/cuda/lib64",
+        "/usr/local/cuda/targets/x86_64-linux/lib",
+        "/usr/local/cuda-12.9/lib64",
+    })
+end
+
 workspace "OPTKIT-GUI"
     configurations { "rebug", "release" }
     architecture "x86_64"
@@ -49,8 +129,8 @@ project "OPTKIT-GUI"
 
     -- Source files
     files {
-        "src/**.cpp",
-        "src/**.h",
+        "src/**.cc",
+        "src/**.hh",
 
         -- Dear ImGui core
         "lib/imgui/imgui.cpp",
@@ -77,6 +157,7 @@ project "OPTKIT-GUI"
         "lib/implot",
         "lib/glfw/include",
         "lib/OPTKIT/src",
+        "lib/OPTKIT/lib/spdlog/include",
     }
 
     -- GLFW build from source
@@ -101,6 +182,47 @@ project "OPTKIT-GUI"
         linkoptions {
             "-Wl,-rpath,lib/OPTKIT/bin/Release",
         }
+
+        if dynamic_lib_exists("nvidia-ml") then
+            local nvml_include = get_nvml_include()
+            if nvml_include then
+                includedirs { nvml_include }
+            end
+            libdirs { "/usr/lib/x86_64-linux-gnu" }
+            links { "nvidia-ml" }
+        end
+
+        if dynamic_lib_exists("amd_smi") then
+            local rocm_include = get_rocm_include()
+            if rocm_include then
+                includedirs { rocm_include }
+            end
+            libdirs { "/opt/rocm/lib" }
+            links { "amd_smi" }
+        elseif dynamic_lib_exists("rocm_smi64") or dynamic_lib_exists("rocm_smi") then
+            local rocm_include = get_rocm_include()
+            if rocm_include then
+                includedirs { rocm_include }
+            end
+            libdirs { "/opt/rocm/lib" }
+            links { "rocm_smi64" }
+        end
+
+        if dynamic_lib_exists("cupti") then
+            local cupti_include = get_cupti_include()
+            local cuda_libdir = get_cuda_libdir()
+            if cupti_include then
+                includedirs { cupti_include }
+            end
+            if cuda_libdir then
+                libdirs { cuda_libdir }
+            end
+            links { "cupti" }
+        end
+
+        if dynamic_lib_exists("netsnmp") then
+            links { "netsnmp" }
+        end
 
         -- Compile GLFW sources directly
         files {

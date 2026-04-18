@@ -1,4 +1,4 @@
-#include "skeleton/welcome.h"
+#include "skeleton/welcome.hh"
 
 #include "imgui.h"
 

@@ -1,6 +1,6 @@
-#include "skeleton/settings.h"
+#include "skeleton/settings.hh"
 
-#include "skeleton/theme.h"
+#include "skeleton/theme.hh"
 
 #include <cmath>
 #include <cstdint>
@@ -69,7 +69,7 @@ void render_settings_button_and_popup(AppState &state,
                                       ImVec4 *clear_color)
 {
     const float gear_size = 36.0f * ui_scale;
-    ImGui::SetCursorPos(ImVec2(ImGui::GetWindowContentRegionMax().x - gear_size - 24.0f * ui_scale, 10.0f * ui_scale));
+    ImGui::SetCursorPos(ImVec2(ImGui::GetWindowContentRegionMax().x - gear_size - 10.0f * ui_scale, 10.0f * ui_scale));
 
     const TextureHandle &active_gear_texture = state.current_theme == AppTheme_White ? white_theme_gear_icon : dark_theme_gear_icon;
     bool pressed_settings = active_gear_texture.id != 0
@@ -81,7 +81,7 @@ void render_settings_button_and_popup(AppState &state,
     if (state.show_settings_popup)
         ImGui::OpenPopup("Settings");
 
-    ImGui::SetNextWindowPos(ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowWidth() - 260.0f * ui_scale,
+    ImGui::SetNextWindowPos(ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowWidth() - 280.0f * ui_scale,
                                    ImGui::GetWindowPos().y + 56.0f * ui_scale));
     if (ImGui::BeginPopup("Settings"))
     {

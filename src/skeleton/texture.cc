@@ -1,4 +1,4 @@
-#include "skeleton/texture.h"
+#include "skeleton/texture.hh"
 
 #include <png.h>
 #include <vector>

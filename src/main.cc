@@ -6,16 +6,16 @@
 #include "imgui_impl_opengl3.h"
 #include "implot.h"
 
-#include "skeleton/about.h"
-#include "skeleton/app_state.h"
-#include "skeleton/create_session.h"
-#include "skeleton/navbar.h"
-#include "skeleton/recent_sessions.h"
-#include "skeleton/settings.h"
-#include "skeleton/texture.h"
-#include "skeleton/theme.h"
-#include "skeleton/welcome.h"
-#include "skeleton/window.h"
+#include "skeleton/about.hh"
+#include "skeleton/app_state.hh"
+#include "skeleton/create_session.hh"
+#include "skeleton/navbar.hh"
+#include "skeleton/recent_sessions.hh"
+#include "skeleton/settings.hh"
+#include "skeleton/texture.hh"
+#include "skeleton/theme.hh"
+#include "skeleton/welcome.hh"
+#include "skeleton/window.hh"
 
 #include <GLFW/glfw3.h>
 #include <cstdio>

@@ -50,4 +50,4 @@ cd "$SCRIPT_DIR"
 
 echo ""
 echo "Done! To build the project:"
-echo "  make [config=debug|release]"
+echo "  make -j$(nproc) [config=debug|release]"

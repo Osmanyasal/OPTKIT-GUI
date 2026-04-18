@@ -1,4 +1,4 @@
-#include "skeleton/window.h"
+#include "skeleton/window.hh"
 
 #include <cstdio>
 
