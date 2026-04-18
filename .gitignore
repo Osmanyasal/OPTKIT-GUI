@@ -61,3 +61,5 @@ Makefile
 *.user
 *.userosscache
 *.sln.docstates
+
+/src/paths.hh
