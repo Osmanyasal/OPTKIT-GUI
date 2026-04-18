@@ -8,7 +8,7 @@ premake5 directly from the OPTKIT submodule (`lib/OPTKIT/lib/premake5`).
 
 ```bash
 # Generate GNU Makefiles (default) and build
-./build.sh          # generates Makefiles via premake5 gmake2
+./build.sh        # generates Makefiles via premake5 gmake2 for local installation
 make                # build Debug (default)
 make config=release # build Release
 ```

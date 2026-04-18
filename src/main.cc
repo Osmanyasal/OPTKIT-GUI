@@ -6,6 +6,7 @@
 #include "imgui_impl_opengl3.h"
 #include "implot.h"
 
+#include "adapter/adapter.hh"
 #include "skeleton/about.hh"
 #include "skeleton/app_state.hh"
 #include "skeleton/create_session.hh"
@@ -194,6 +195,7 @@ int main(int, char **)
     ImGui_ImplGlfw_Shutdown();
     destroy_texture(&dark_theme_gear_icon);
     destroy_texture(&white_theme_gear_icon);
+    OptkitAdapter::finalize();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
 

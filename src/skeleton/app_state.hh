@@ -28,6 +28,11 @@ struct SessionDraft
     std::string target_binary = "./bin/my_workload";
     std::string target_arguments;
     bool post_mortem = true;
+    double connected_at_seconds = -1.0;
+    double elapsed_seconds = 0.0;
+    int launched_process_id = -1;
+    bool launched_process_cancel_requested = false;
+    std::string process_status;
 };
 
 struct AppState
@@ -38,5 +43,4 @@ struct AppState
     bool open_target_binary_picker = false;
     char target_binary_picker_directory[1024] = ".";
     SessionDraft session_draft;
-    OptkitAdapter optkit;
 };

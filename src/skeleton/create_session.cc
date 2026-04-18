@@ -5,10 +5,16 @@
 #include "misc/cpp/imgui_stdlib.cpp"
 
 #include <algorithm>
+#include <cerrno>
+#include <csignal>
+#include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <string>
+#include <sys/wait.h>
 #include <system_error>
+#include <unistd.h>
 #include <vector>
 
 namespace
@@ -24,15 +30,16 @@ namespace
     {
         std::string preview = draft.target_binary;
         if (preview.empty())
-            preview = "<select a target binary>";
+            return "<select a target binary>";
 
+        std::string path = OPTKIT_CLI_PATH;
+        std::string params = " stat -o ";
+        std::string program = " -- " + draft.target_binary;
         if (!draft.target_arguments.empty())
-        {
-            preview += " ";
-            preview += draft.target_arguments;
-        }
+            program += " " + draft.target_arguments;
+        std::string command = path + params + program;
 
-        return preview;
+        return command;
     }
 
     std::string get_picker_directory(const AppState &state)
@@ -130,6 +137,101 @@ namespace
         return clicked;
     }
 
+    std::string format_elapsed_time(double elapsed_seconds)
+    {
+        const int total_seconds = std::max(0, static_cast<int>(std::floor(elapsed_seconds)));
+        const int hours = total_seconds / 3600;
+        const int minutes = (total_seconds % 3600) / 60;
+        const int seconds = total_seconds % 60;
+
+        char buffer[32];
+        if (hours > 0)
+            std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", hours, minutes, seconds);
+        else
+            std::snprintf(buffer, sizeof(buffer), "%02d:%02d", minutes, seconds);
+
+        return buffer;
+    }
+
+    bool start_launch_process(const std::string &command, SessionDraft &draft)
+    {
+        errno = 0;
+        const pid_t child_pid = fork();
+        if (child_pid < 0)
+        {
+            draft.process_status = std::string("Failed to start launch command: ") + std::strerror(errno);
+            return false;
+        }
+
+        if (child_pid == 0)
+        {
+            if (setsid() < 0)
+                _exit(127);
+
+            execl("/bin/sh", "sh", "-c", command.c_str(), static_cast<char *>(nullptr));
+            _exit(127);
+        }
+
+        draft.launched_process_id = static_cast<int>(child_pid);
+        draft.launched_process_cancel_requested = false;
+        draft.process_status.clear();
+        return true;
+    }
+
+    void request_process_cancel(SessionDraft &draft)
+    {
+        if (draft.launched_process_id <= 0 || draft.launched_process_cancel_requested)
+            return;
+
+        if (kill(-draft.launched_process_id, SIGTERM) == 0)
+        {
+            draft.launched_process_cancel_requested = true;
+            draft.process_status = "Cancelling process...";
+            return;
+        }
+
+        draft.process_status = std::string("Failed to cancel process: ") + std::strerror(errno);
+    }
+
+    void poll_launch_process(SessionDraft &draft)
+    {
+        if (draft.launched_process_id <= 0)
+            return;
+
+        int status = 0;
+        const pid_t wait_result = waitpid(static_cast<pid_t>(draft.launched_process_id), &status, WNOHANG);
+        if (wait_result == 0)
+            return;
+
+        if (wait_result < 0)
+        {
+            draft.process_status = std::string("Failed to poll process: ") + std::strerror(errno);
+            draft.launched_process_id = -1;
+            draft.launched_process_cancel_requested = false;
+            draft.connected_at_seconds = -1.0;
+            OptkitAdapter::finalize();
+            return;
+        }
+
+        if (WIFEXITED(status))
+        {
+            const int exit_code = WEXITSTATUS(status);
+            if (exit_code == 0)
+                draft.process_status = draft.launched_process_cancel_requested ? "Process cancelled." : "Process completed.";
+            else
+                draft.process_status = "Process exited with code " + std::to_string(exit_code) + ".";
+        }
+        else if (WIFSIGNALED(status))
+        {
+            draft.process_status = draft.launched_process_cancel_requested ? "Process cancelled." : "Process terminated by signal " + std::to_string(WTERMSIG(status)) + ".";
+        }
+
+        draft.launched_process_id = -1;
+        draft.launched_process_cancel_requested = false;
+        draft.connected_at_seconds = -1.0;
+        OptkitAdapter::finalize();
+    }
+
     void render_target_binary_picker(AppState &state, float ui_scale)
     {
         if (state.open_target_binary_picker)
@@ -217,21 +319,30 @@ void render_create_session_page(AppState &state, float ui_scale)
 {
     static double last_launch_command_copy_at = -10.0;
 
+    poll_launch_process(state.session_draft);
+
+    if (OptkitAdapter::is_initialized() && state.session_draft.connected_at_seconds >= 0.0)
+        state.session_draft.elapsed_seconds = ImGui::GetTime() - state.session_draft.connected_at_seconds;
+    else if (!OptkitAdapter::is_initialized())
+        state.session_draft.elapsed_seconds = 0.0;
+
+    ImGui::BeginChild("CreateSessionPanel", ImVec2(0.0f, 400.0f * ui_scale), true);
+
+    ImGui::SetWindowFontScale(1.4f);
     ImGui::Text("Create Session");
+    ImGui::SetWindowFontScale(1.0f);
+
     ImGui::Spacing();
-    ImGui::InputText("Session Name", &state.session_draft.session_name);
+    ImGui::Text("Session Name");
+    ImGui::InputText("##session_name", &state.session_draft.session_name);
     ImGui::TextDisabled("Target Binary");
     ImGui::InputText("##TargetBinary", &state.session_draft.target_binary);
     ImGui::SameLine();
     if (ImGui::Button("Browse...", ImVec2(110.0f * ui_scale, 0.0f)))
         state.open_target_binary_picker = true;
-    if (!state.session_draft.target_binary.empty())
-    {
-        ImGui::TextDisabled("Selected Path");
-        ImGui::TextWrapped("%s", state.session_draft.target_binary.c_str());
-    }
 
-    ImGui::InputText("Parameters", &state.session_draft.target_arguments);
+    ImGui::Text("Parameters");
+    ImGui::InputText("##parameters", &state.session_draft.target_arguments);
     const std::string launch_command = make_command_preview(state.session_draft);
     ImGui::TextDisabled("Launch Command");
     ImGui::SameLine();
@@ -240,12 +351,12 @@ void render_create_session_page(AppState &state, float ui_scale)
         ImGui::SetClipboardText(launch_command.c_str());
         last_launch_command_copy_at = ImGui::GetTime();
     }
-    ImGui::Dummy(ImVec2(0.0f, 4.0f * ui_scale));
     ImGui::TextWrapped("%s", launch_command.c_str());
     if (ImGui::GetTime() - last_launch_command_copy_at < 1)
     {
         ImGui::TextDisabled("Copied to clipboard");
     }
+    ImGui::Dummy(ImVec2(0.0f, 4.0f * ui_scale));
 
     const char *templates[] = {"CARM", "TopdownL1", "TopdownL2-BackendBound", "TopdownL2-Retiring", "TopdownL2-FrontendBound", "TopdownL2-BadSpeculation", "Custom"};
     ImGui::Combo("Template", &state.session_draft.selected_template, templates, IM_ARRAYSIZE(templates));
@@ -261,32 +372,75 @@ void render_create_session_page(AppState &state, float ui_scale)
     }
     else
     {
-        
     }
 
     ImGui::Dummy(ImVec2(0.0f, 4.0f * ui_scale));
     ImGui::Checkbox("Post Mortem", &state.session_draft.post_mortem);
     ImGui::Dummy(ImVec2(0.0f, 8.0f * ui_scale));
+    ImGui::BeginDisabled(state.session_draft.launched_process_id > 0);
     if (launch_color_button("Launch Session", ImVec2(190.0f * ui_scale, 40.0f * ui_scale), ui_scale))
     {
-        if (state.optkit.initialize(state.session_draft.session_name))
-            state.current_page = AppPage_RecentSessions;
+        if (OptkitAdapter::initialize(state.session_draft.session_name))
+        {
+            if (start_launch_process(launch_command, state.session_draft))
+            {
+                state.session_draft.connected_at_seconds = ImGui::GetTime();
+                state.session_draft.elapsed_seconds = 0.0;
+            }
+            else
+            {
+                state.session_draft.connected_at_seconds = -1.0;
+                state.session_draft.elapsed_seconds = 0.0;
+                OptkitAdapter::finalize();
+            }
+        }
     }
+    ImGui::EndDisabled();
     ImGui::SameLine();
     if (ImGui::Button("Cancel", ImVec2(120.0f * ui_scale, 40.0f * ui_scale)))
     {
-        state.current_page = AppPage_Welcome;
-        state.session_draft = SessionDraft{};
+        if (state.session_draft.launched_process_id > 0)
+        {
+            request_process_cancel(state.session_draft);
+        }
+        else
+        {
+            OptkitAdapter::finalize();
+            state.current_page = AppPage_Welcome;
+            state.session_draft = SessionDraft{};
+        }
     }
-    if (!state.optkit.last_error().empty())
+    if (!OptkitAdapter::last_error().empty())
     {
         ImGui::Dummy(ImVec2(0.0f, 8.0f * ui_scale));
-        ImGui::TextColored(ImVec4(0.92f, 0.30f, 0.30f, 1.0f), "%s", state.optkit.last_error().c_str());
+        ImGui::TextColored(ImVec4(0.92f, 0.30f, 0.30f, 1.0f), "%s", OptkitAdapter::last_error().c_str());
     }
-    else if (state.optkit.is_initialized())
+    else if (OptkitAdapter::is_initialized())
     {
         ImGui::Dummy(ImVec2(0.0f, 8.0f * ui_scale));
-        ImGui::TextColored(ImVec4(0.20f, 0.70f, 0.32f, 1.0f), "Connected to OPTKIT session: %s", state.optkit.active_session_name().c_str());
+        ImGui::TextColored(ImVec4(0.20f, 0.70f, 0.32f, 1.0f), "Connected to OPTKIT session: %s", OptkitAdapter::active_session_name().c_str());
+        ImGui::TextDisabled("Time passed: %s", format_elapsed_time(state.session_draft.elapsed_seconds).c_str());
+        if (state.session_draft.launched_process_id > 0)
+        {
+            ImGui::SameLine();
+            if (!state.session_draft.launched_process_cancel_requested)
+            {
+                if (ImGui::Button("Cancel Process"))
+                    request_process_cancel(state.session_draft);
+            }
+            else
+            {
+                ImGui::TextDisabled("Cancelling...");
+            }
+        }
     }
+
+    if (!state.session_draft.process_status.empty())
+    {
+        ImGui::Dummy(ImVec2(0.0f, 8.0f * ui_scale));
+        ImGui::TextDisabled("%s", state.session_draft.process_status.c_str());
+    }
+
+    ImGui::EndChild();
     render_target_binary_picker(state, ui_scale);
 }

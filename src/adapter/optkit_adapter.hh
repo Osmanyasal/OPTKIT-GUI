@@ -10,23 +10,15 @@ namespace optkit{
 class OptkitAdapter
 {
 public:
-	OptkitAdapter();
-    ~OptkitAdapter();
+    static bool initialize(const std::string &session_name);
+    static void finalize();
 
-	OptkitAdapter(const OptkitAdapter &) = delete;
-	OptkitAdapter &operator=(const OptkitAdapter &) = delete;
-	OptkitAdapter(OptkitAdapter &&) = delete;
-	OptkitAdapter &operator=(OptkitAdapter &&) = delete;
-
-	bool initialize(const std::string &session_name);
-	void finalize();
-
-	bool is_initialized() const;
-	const std::string &last_error() const;
-	const std::string &active_session_name() const;
+    static bool is_initialized();
+    static const std::string &last_error();
+    static const std::string &active_session_name();
 
 private: 
-	std::unique_ptr<optkit::OPTKIT> impl_;
-	std::string last_error_;
-	std::string active_session_name_;
+    static std::unique_ptr<optkit::OPTKIT> impl_;
+    static std::string last_error_;
+    static std::string active_session_name_;
 };

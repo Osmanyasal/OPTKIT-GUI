@@ -1,5 +1,6 @@
 #pragma once
 
 #include "skeleton/app_state.hh"
+#include "paths.hh"
 
 void render_create_session_page(AppState &state, float ui_scale);

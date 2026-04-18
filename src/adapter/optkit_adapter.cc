@@ -1,16 +1,18 @@
 #include "adapter/optkit_adapter.hh"
+
 #include <optkit.hh>
+
 #include <exception>
 
-OptkitAdapter::OptkitAdapter() = default;
-
-OptkitAdapter::~OptkitAdapter()
-{
-    finalize();
-}
+std::unique_ptr<optkit::OPTKIT> OptkitAdapter::impl_;
+std::string OptkitAdapter::last_error_;
+std::string OptkitAdapter::active_session_name_;
 
 bool OptkitAdapter::initialize(const std::string &session_name)
 {
+    if(OptkitAdapter::is_initialized())
+        return false;
+
     const std::string execution_name = session_name.empty() ? std::string("optkit-gui-session") : session_name;
 
     if (impl_)
@@ -50,17 +52,17 @@ void OptkitAdapter::finalize()
     last_error_.clear();
 }
 
-bool OptkitAdapter::is_initialized() const
+bool OptkitAdapter::is_initialized()
 {
     return impl_ != nullptr;
 }
 
-const std::string &OptkitAdapter::last_error() const
+const std::string &OptkitAdapter::last_error()
 {
     return last_error_;
 }
 
-const std::string &OptkitAdapter::active_session_name() const
+const std::string &OptkitAdapter::active_session_name()
 {
     return active_session_name_;
 }
