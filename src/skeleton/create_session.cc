@@ -35,6 +35,18 @@ namespace
 
         std::string path = OPTKIT_CLI_PATH;
         std::string params = " stat -o ";
+        if (draft.collect_gpu_metrics)
+        {
+            params += "--gpu-events ";
+        }
+        if (draft.collect_disk_metrics)
+            params += "--disk ";
+        if (draft.collect_cpu_energy && draft.collect_gpu_energy)
+            params += "--energy ";
+        else if (draft.collect_gpu_energy)
+            params += "--gpu-energy ";
+        else if (draft.collect_cpu_energy)
+            params += "--cpu-energy ";
         std::string program = " -- " + draft.target_binary;
         if (!draft.target_arguments.empty())
             program += " " + draft.target_arguments;
@@ -171,12 +183,22 @@ namespace
         return std::find(metrics.begin(), metrics.end(), metric) != metrics.end();
     }
 
+    void assign_all_metrics(std::vector<std::string> &selected_metrics,
+                            const std::vector<std::string> &available_metrics)
+    {
+        selected_metrics = available_metrics;
+    }
+
     void render_metric_selector(const char *id,
                                 const char *title,
                                 const std::vector<std::string> &available_metrics,
                                 std::vector<std::string> &selected_metrics,
-                                float ui_scale)
+                                float ui_scale,
+                                bool lock_selected = false)
     {
+        if (lock_selected)
+            assign_all_metrics(selected_metrics, available_metrics);
+
         ImGui::PushID(id);
         ImGui::TextDisabled("%s", title);
 
@@ -184,19 +206,29 @@ namespace
         ImGui::TextUnformatted("Available");
         if (ImGui::BeginChild("AvailableMetrics", ImVec2(250.0f * ui_scale, 130.0f * ui_scale), true))
         {
-            bool has_available_metrics = false;
-            for (const std::string &metric : available_metrics)
+            if (lock_selected)
             {
-                if (contains_metric(selected_metrics, metric))
-                    continue;
-
-                has_available_metrics = true;
-                if (ImGui::Selectable(metric.c_str(), false))
-                    selected_metrics.push_back(metric);
+                if (available_metrics.empty())
+                    ImGui::TextDisabled("No available metrics");
+                else
+                    ImGui::TextDisabled("All available metrics are selected");
             }
+            else
+            {
+                bool has_available_metrics = false;
+                for (const std::string &metric : available_metrics)
+                {
+                    if (contains_metric(selected_metrics, metric))
+                        continue;
 
-            if (!has_available_metrics)
-                ImGui::TextDisabled("No available metrics");
+                    has_available_metrics = true;
+                    if (ImGui::Selectable(metric.c_str(), false))
+                        selected_metrics.push_back(metric);
+                }
+
+                if (!has_available_metrics)
+                    ImGui::TextDisabled("No available metrics");
+            }
         }
         ImGui::EndChild();
         ImGui::EndGroup();
@@ -210,6 +242,13 @@ namespace
             if (selected_metrics.empty())
             {
                 ImGui::TextDisabled("No selected metrics");
+            }
+            else if (lock_selected)
+            {
+                ImGui::BeginDisabled();
+                for (const std::string &metric : selected_metrics)
+                    ImGui::Selectable(metric.c_str(), false);
+                ImGui::EndDisabled();
             }
             else
             {
@@ -442,8 +481,8 @@ void render_create_session_page(AppState &state, float ui_scale)
     {
         ImGui::Dummy(ImVec2(0.0f, 8.0f * ui_scale));
         ImGui::TextDisabled("Collectors");
-        ImGui::Checkbox("CPU Counters", &state.session_draft.collect_cpu);
-        if (state.session_draft.collect_cpu)
+        ImGui::Checkbox("CPU Counters", &state.session_draft.collect_cpu_metrics);
+        if (state.session_draft.collect_cpu_metrics)
         {
             render_metric_selector("CpuPerformanceMetrics",
                                    "CPU Performance Metrics",
@@ -451,29 +490,100 @@ void render_create_session_page(AppState &state, float ui_scale)
                                    state.session_draft.selected_metrics_by_category["cpu_performance"],
                                    ui_scale);
         }
-        ImGui::Checkbox("Energy", &state.session_draft.collect_energy);
-        if (state.session_draft.collect_energy)
+        const bool cpu_energy_was_enabled = state.session_draft.collect_cpu_energy;
+        ImGui::Checkbox("CPU Energy", &state.session_draft.collect_cpu_energy);
+        if (state.session_draft.collect_cpu_energy != cpu_energy_was_enabled)
+        {
+            if (state.session_draft.collect_cpu_energy)
+            {
+                assign_all_metrics(state.session_draft.selected_metrics_by_category["cpu_energy"],
+                                   get_category_metrics(metrics_by_category, "cpu_energy"));
+            }
+            else
+            {
+                state.session_draft.selected_metrics_by_category["cpu_energy"].clear();
+            }
+        }
+        if (state.session_draft.collect_cpu_energy)
         {
             render_metric_selector("CpuEnergyMetrics",
                                    "CPU Energy Metrics",
                                    get_category_metrics(metrics_by_category, "cpu_energy"),
                                    state.session_draft.selected_metrics_by_category["cpu_energy"],
-                                   ui_scale);
+                                   ui_scale,
+                                   true);
+        }
+
+        const bool gpu_energy_was_enabled = state.session_draft.collect_gpu_energy;
+        ImGui::Checkbox("GPU Energy", &state.session_draft.collect_gpu_energy);
+        if (state.session_draft.collect_gpu_energy != gpu_energy_was_enabled)
+        {
+            if (state.session_draft.collect_gpu_energy)
+            {
+                assign_all_metrics(state.session_draft.selected_metrics_by_category["gpu_energy"],
+                                   get_category_metrics(metrics_by_category, "gpu_energy"));
+            }
+            else
+            {
+                state.session_draft.selected_metrics_by_category["gpu_energy"].clear();
+            }
+        }
+        if (state.session_draft.collect_gpu_energy)
+        {
             ImGui::Dummy(ImVec2(0.0f, 6.0f * ui_scale));
             render_metric_selector("GpuEnergyMetrics",
                                    "GPU Energy Metrics",
                                    get_category_metrics(metrics_by_category, "gpu_energy"),
                                    state.session_draft.selected_metrics_by_category["gpu_energy"],
-                                   ui_scale);
+                                   ui_scale,
+                                   true);
         }
-        ImGui::Checkbox("GPU Metrics", &state.session_draft.collect_gpu);
-        if (state.session_draft.collect_gpu)
+        const bool gpu_was_enabled = state.session_draft.collect_gpu_metrics;
+        ImGui::Checkbox("GPU Metrics", &state.session_draft.collect_gpu_metrics);
+        if (state.session_draft.collect_gpu_metrics != gpu_was_enabled)
+        {
+            if (state.session_draft.collect_gpu_metrics)
+            {
+                assign_all_metrics(state.session_draft.selected_metrics_by_category["gpu_performance"],
+                                   get_category_metrics(metrics_by_category, "gpu_performance"));
+            }
+            else
+            {
+                state.session_draft.selected_metrics_by_category["gpu_performance"].clear();
+            }
+        }
+        if (state.session_draft.collect_gpu_metrics)
         {
             render_metric_selector("GpuPerformanceMetrics",
                                    "GPU Performance Metrics",
                                    get_category_metrics(metrics_by_category, "gpu_performance"),
                                    state.session_draft.selected_metrics_by_category["gpu_performance"],
-                                   ui_scale);
+                                   ui_scale,
+                                   true);
+        }
+
+        const bool disk_was_enabled = state.session_draft.collect_disk_metrics;
+        ImGui::Checkbox("Disk Metrics", &state.session_draft.collect_disk_metrics);
+        if (state.session_draft.collect_disk_metrics != disk_was_enabled)
+        {
+            if (state.session_draft.collect_disk_metrics)
+            {
+                assign_all_metrics(state.session_draft.selected_metrics_by_category["disk"],
+                                   get_category_metrics(metrics_by_category, "disk"));
+            }
+            else
+            {
+                state.session_draft.selected_metrics_by_category["disk"].clear();
+            }
+        }
+        if (state.session_draft.collect_disk_metrics)
+        {
+            render_metric_selector("DiskMetrics",
+                                   "Disk Metrics",
+                                   get_category_metrics(metrics_by_category, "disk"),
+                                   state.session_draft.selected_metrics_by_category["disk"],
+                                   ui_scale,
+                                   true);
         }
 
         ImGui::Dummy(ImVec2(0.0f, 18.0f * ui_scale));

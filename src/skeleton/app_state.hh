@@ -23,9 +23,11 @@ enum AppPage
 struct SessionDraft
 {
     int selected_template = 0;
-    bool collect_cpu = false;
-    bool collect_energy = false;
-    bool collect_gpu = false;
+    bool collect_cpu_metrics = false;
+    bool collect_cpu_energy = false;
+    bool collect_gpu_energy = false;
+    bool collect_gpu_metrics = false;
+    bool collect_disk_metrics = false;
     std::string session_name = "New Profiling Session";
     std::string target_binary = "./bin/my_workload";
     std::string target_arguments;
