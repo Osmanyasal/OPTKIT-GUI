@@ -1,16 +1,14 @@
 #include "adapter/optkit_adapter.hh"
-
 #include <optkit.hh>
-
 #include <exception>
-
+#include <iostream>
 std::unique_ptr<optkit::OPTKIT> OptkitAdapter::impl_;
 std::string OptkitAdapter::last_error_;
 std::string OptkitAdapter::active_session_name_;
 
 bool OptkitAdapter::initialize(const std::string &session_name)
 {
-    if(OptkitAdapter::is_initialized())
+    if (OptkitAdapter::is_initialized())
         return false;
 
     const std::string execution_name = session_name.empty() ? std::string("optkit-gui-session") : session_name;
@@ -65,4 +63,27 @@ const std::string &OptkitAdapter::last_error()
 const std::string &OptkitAdapter::active_session_name()
 {
     return active_session_name_;
+}
+
+std::unordered_map<std::string, std::vector<std::string>> OptkitAdapter::list_available_metrics()
+{
+
+    std::unordered_map<std::string, std::vector<std::string>> metrics_by_category;
+
+    metrics_by_category["cpu_performance"] = optkit::metrics::performance::cpu_metrics::get_all_metrics();
+    metrics_by_category["cpu_energy"] = optkit::metrics::energy::cpu_metrics::get_all_metrics();
+    metrics_by_category["gpu_energy"] = optkit::metrics::energy::gpu_metrics::get_all_metrics();
+    metrics_by_category["gpu_performance"] = optkit::metrics::performance::gpu_metrics::get_all_metrics();
+    metrics_by_category["disk"] = optkit::metrics::disk::core_metrics::get_all_metrics();
+
+    return metrics_by_category;
+}
+std::unordered_map<std::string, std::vector<std::string>> OptkitAdapter::list_available_events()
+{
+    std::unordered_map<std::string, std::vector<std::string>> metrics_by_category;
+ 
+    metrics_by_category["cpu_core_events"] = optkit::metrics::performance::cpu_get_supported_core_events();
+    metrics_by_category["cpu_native_events"] = optkit::metrics::performance::cpu_get_native_events();
+
+    return metrics_by_category;
 }

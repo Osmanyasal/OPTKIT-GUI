@@ -3,6 +3,8 @@
 #include "adapter/adapter.hh"
 
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 enum AppTheme
 {
@@ -21,8 +23,8 @@ enum AppPage
 struct SessionDraft
 {
     int selected_template = 0;
-    bool collect_cpu = true;
-    bool collect_memory = true;
+    bool collect_cpu = false;
+    bool collect_energy = false;
     bool collect_gpu = false;
     std::string session_name = "New Profiling Session";
     std::string target_binary = "./bin/my_workload";
@@ -33,6 +35,7 @@ struct SessionDraft
     int launched_process_id = -1;
     bool launched_process_cancel_requested = false;
     std::string process_status;
+    std::unordered_map<std::string, std::vector<std::string>> selected_metrics_by_category;
 };
 
 struct AppState

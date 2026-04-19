@@ -2,6 +2,8 @@
 
 #include <memory>
 #include <string>
+#include <vector>
+#include <unordered_map>
 
 namespace optkit{
     class OPTKIT;
@@ -16,6 +18,9 @@ public:
     static bool is_initialized();
     static const std::string &last_error();
     static const std::string &active_session_name();
+
+    static std::unordered_map<std::string, std::vector<std::string>> list_available_metrics();
+    static std::unordered_map<std::string, std::vector<std::string>> list_available_events();
 
 private: 
     static std::unique_ptr<optkit::OPTKIT> impl_;

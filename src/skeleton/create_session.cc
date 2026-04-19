@@ -12,6 +12,7 @@
 #include <cstring>
 #include <filesystem>
 #include <string>
+#include <unordered_map>
 #include <sys/wait.h>
 #include <system_error>
 #include <unistd.h>
@@ -151,6 +152,84 @@ namespace
             std::snprintf(buffer, sizeof(buffer), "%02d:%02d", minutes, seconds);
 
         return buffer;
+    }
+
+    const std::vector<std::string> &get_category_metrics(const std::unordered_map<std::string, std::vector<std::string>> &metrics_by_category,
+                                                         const std::string &category)
+    {
+        static const std::vector<std::string> empty_metrics;
+
+        const auto it = metrics_by_category.find(category);
+        if (it == metrics_by_category.end())
+            return empty_metrics;
+
+        return it->second;
+    }
+
+    bool contains_metric(const std::vector<std::string> &metrics, const std::string &metric)
+    {
+        return std::find(metrics.begin(), metrics.end(), metric) != metrics.end();
+    }
+
+    void render_metric_selector(const char *id,
+                                const char *title,
+                                const std::vector<std::string> &available_metrics,
+                                std::vector<std::string> &selected_metrics,
+                                float ui_scale)
+    {
+        ImGui::PushID(id);
+        ImGui::TextDisabled("%s", title);
+
+        ImGui::BeginGroup();
+        ImGui::TextUnformatted("Available");
+        if (ImGui::BeginChild("AvailableMetrics", ImVec2(250.0f * ui_scale, 130.0f * ui_scale), true))
+        {
+            bool has_available_metrics = false;
+            for (const std::string &metric : available_metrics)
+            {
+                if (contains_metric(selected_metrics, metric))
+                    continue;
+
+                has_available_metrics = true;
+                if (ImGui::Selectable(metric.c_str(), false))
+                    selected_metrics.push_back(metric);
+            }
+
+            if (!has_available_metrics)
+                ImGui::TextDisabled("No available metrics");
+        }
+        ImGui::EndChild();
+        ImGui::EndGroup();
+
+        ImGui::SameLine();
+
+        ImGui::BeginGroup();
+        ImGui::TextUnformatted("Selected");
+        if (ImGui::BeginChild("SelectedMetrics", ImVec2(250.0f * ui_scale, 130.0f * ui_scale), true))
+        {
+            if (selected_metrics.empty())
+            {
+                ImGui::TextDisabled("No selected metrics");
+            }
+            else
+            {
+                for (size_t index = 0; index < selected_metrics.size();)
+                {
+                    if (ImGui::Selectable(selected_metrics[index].c_str(), false))
+                    {
+                        selected_metrics.erase(selected_metrics.begin() + static_cast<std::ptrdiff_t>(index));
+                    }
+                    else
+                    {
+                        ++index;
+                    }
+                }
+            }
+        }
+        ImGui::EndChild();
+        ImGui::EndGroup();
+
+        ImGui::PopID();
     }
 
     bool start_launch_process(const std::string &command, SessionDraft &draft)
@@ -318,6 +397,7 @@ namespace
 void render_create_session_page(AppState &state, float ui_scale)
 {
     static double last_launch_command_copy_at = -10.0;
+    static const std::unordered_map<std::string, std::vector<std::string>> metrics_by_category = OptkitAdapter::list_available_metrics();
 
     poll_launch_process(state.session_draft);
 
@@ -325,8 +405,6 @@ void render_create_session_page(AppState &state, float ui_scale)
         state.session_draft.elapsed_seconds = ImGui::GetTime() - state.session_draft.connected_at_seconds;
     else if (!OptkitAdapter::is_initialized())
         state.session_draft.elapsed_seconds = 0.0;
-
-    ImGui::BeginChild("CreateSessionPanel", ImVec2(0.0f, 400.0f * ui_scale), true);
 
     ImGui::SetWindowFontScale(1.4f);
     ImGui::Text("Create Session");
@@ -365,8 +443,38 @@ void render_create_session_page(AppState &state, float ui_scale)
         ImGui::Dummy(ImVec2(0.0f, 8.0f * ui_scale));
         ImGui::TextDisabled("Collectors");
         ImGui::Checkbox("CPU Counters", &state.session_draft.collect_cpu);
-        ImGui::Checkbox("Memory Metrics", &state.session_draft.collect_memory);
+        if (state.session_draft.collect_cpu)
+        {
+            render_metric_selector("CpuPerformanceMetrics",
+                                   "CPU Performance Metrics",
+                                   get_category_metrics(metrics_by_category, "cpu_performance"),
+                                   state.session_draft.selected_metrics_by_category["cpu_performance"],
+                                   ui_scale);
+        }
+        ImGui::Checkbox("Energy", &state.session_draft.collect_energy);
+        if (state.session_draft.collect_energy)
+        {
+            render_metric_selector("CpuEnergyMetrics",
+                                   "CPU Energy Metrics",
+                                   get_category_metrics(metrics_by_category, "cpu_energy"),
+                                   state.session_draft.selected_metrics_by_category["cpu_energy"],
+                                   ui_scale);
+            ImGui::Dummy(ImVec2(0.0f, 6.0f * ui_scale));
+            render_metric_selector("GpuEnergyMetrics",
+                                   "GPU Energy Metrics",
+                                   get_category_metrics(metrics_by_category, "gpu_energy"),
+                                   state.session_draft.selected_metrics_by_category["gpu_energy"],
+                                   ui_scale);
+        }
         ImGui::Checkbox("GPU Metrics", &state.session_draft.collect_gpu);
+        if (state.session_draft.collect_gpu)
+        {
+            render_metric_selector("GpuPerformanceMetrics",
+                                   "GPU Performance Metrics",
+                                   get_category_metrics(metrics_by_category, "gpu_performance"),
+                                   state.session_draft.selected_metrics_by_category["gpu_performance"],
+                                   ui_scale);
+        }
 
         ImGui::Dummy(ImVec2(0.0f, 18.0f * ui_scale));
     }
@@ -441,6 +549,5 @@ void render_create_session_page(AppState &state, float ui_scale)
         ImGui::TextDisabled("%s", state.session_draft.process_status.c_str());
     }
 
-    ImGui::EndChild();
     render_target_binary_picker(state, ui_scale);
 }
